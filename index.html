@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bank Expense Categorization → QBO Import | GATP</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231F3864'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'%3E%24%3C/text%3E%3C/svg%3E" />
+  <meta name="description" content="Turn a bank/credit card export + MSO register into a categorized QuickBooks Online expense import workbook, with checkpoints and a separate tab for anything it can't identify. Runs entirely in your browser." />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <div class="brand">
+        <div class="logo">GATP</div>
+        <div>
+          <h1>Bank Expense Categorization → QBO Import</h1>
+          <p>Select a bank/CC account, upload its register + bank transactions → get a categorized QuickBooks import workbook.</p>
+        </div>
+      </div>
+      <div class="privacy">🔒 Files are processed entirely in your browser. Nothing is uploaded to any server.</div>
+      <nav class="toolnav">
+        <a href="index.html" class="active">Bank Expense Categorization</a>
+        <a href="dashboard.html" target="_blank" rel="noopener">Expense Dashboard ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- STEP 1: bank/CC account -->
+    <section class="card">
+      <h2><span class="step-n">1</span> Select the Bank / Credit Card account</h2>
+      <p class="hint">One bank account per run — QBO imports per bank account. Pick the account this month's register and bank export are both for, or add a new one from your Chart of Accounts.</p>
+      <div class="acct-row">
+        <select id="acctSelect"></select>
+        <button class="btn btn-ghost" id="addAcctBtn" type="button">+ Add account</button>
+        <span class="acct-badge hidden" id="acctBadge"></span>
+      </div>
+    </section>
+
+    <!-- STEP 2: files -->
+    <section class="card">
+      <h2><span class="step-n">2</span> Upload this account's files</h2>
+      <p class="hint">Bank export needs at minimum <b>Date</b>, <b>Description</b>, <b>Amount</b>. MSO register export needs <b>Date</b>, <b>Payee</b>, <b>Memo</b>, <b>Class</b>, <b>Payment/Deposit</b>, <b>Account</b>.</p>
+      <div class="drops">
+        <label class="drop" id="dropBank">
+          <div class="ico">🏦</div>
+          <div class="t">Bank / CC transactions</div>
+          <div class="s">.csv, .xls or .xlsx — for the account selected above</div>
+          <div class="file" id="bankFileName"></div>
+          <input type="file" id="bankInput" accept=".csv,.xls,.xlsx,text/csv" />
+        </label>
+        <label class="drop" id="dropReg">
+          <div class="ico">📒</div>
+          <div class="t">MSO (Sagebrush) bank register</div>
+          <div class="s">.csv, .xls or .xlsx — same account &amp; period</div>
+          <div class="file" id="regFileName"></div>
+          <input type="file" id="regInput" accept=".csv,.xls,.xlsx,text/csv" />
+        </label>
+      </div>
+
+      <details style="margin-top:16px;">
+        <summary style="cursor:pointer; font-weight:700; color:var(--navy); font-size:13px;">Optional — override the standing master lists / QBO template for this run</summary>
+        <div class="drops" style="margin-top:12px;">
+          <label class="drop" id="dropMaster">
+            <div class="ico">📚</div>
+            <div class="t">HN vs MSO master lists</div>
+            <div class="s">.xlsx with tabs: Master COA list, Master class list, Master Vendor list</div>
+            <div class="file" id="masterFileName">Using built-in lists (COA · Class · Vendor)</div>
+            <input type="file" id="masterInput" accept=".xls,.xlsx" />
+          </label>
+          <label class="drop" id="dropTemplate">
+            <div class="ico">🧾</div>
+            <div class="t">QBO import template</div>
+            <div class="s">.xlsx — header row defines output column order</div>
+            <div class="file" id="templateFileName">Using built-in columns: Date · Payee · Account · Description · Amount · Memo · Class</div>
+            <input type="file" id="templateInput" accept=".xls,.xlsx" />
+          </label>
+        </div>
+      </details>
+
+      <div class="actions" style="margin-top:18px;">
+        <button class="btn btn-primary" id="processBtn" disabled>⚙️ Match &amp; categorize</button>
+        <span class="muted" id="readyHint" style="font-size:13px;">Select an account and upload both files to enable.</span>
+      </div>
+      <div id="errBox" class="err hidden"></div>
+    </section>
+
+    <!-- STEP 3: checkpoint + review -->
+    <section class="card hidden" id="resultsCard">
+      <h2><span class="step-n">3</span> Review &amp; confirm (checkpoint)</h2>
+      <p class="hint">Every bank transaction lands in exactly one of the two tabs below — nothing is force-mapped or dropped. Fix anything under Needs Review, then confirm before downloading.</p>
+
+      <div class="tiles" id="tiles"></div>
+
+      <div class="checkpoint" id="reconCheckpoint">
+        <div class="cp-ico">🧮</div>
+        <div class="cp-body">
+          <b>Checkpoint 1 — Reconciliation</b>
+          <span id="reconText"></span>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <button class="tabbtn active" data-tab="import" id="tabBtnImport" type="button">✅ QBO Import <span class="cnt" id="impCnt">0</span></button>
+        <button class="tabbtn warn" data-tab="review" id="tabBtnReview" type="button">⚠ Needs Review <span class="cnt" id="revCnt">0</span></button>
+      </div>
+
+      <div class="tabpanel active" id="panelImport">
+        <h3 class="section-title">QBO Import — <span id="procCount"></span> rows
+          <span class="muted" style="font-weight:400;">(Payee / Account / Class are editable dropdowns)</span></h3>
+        <div class="tablewrap"><table class="data" id="procTable"></table></div>
+      </div>
+
+      <div class="tabpanel" id="panelReview">
+        <h3 class="section-title">Needs Review — <span id="npCount"></span> rows the app couldn't confidently categorize</h3>
+        <p class="hint" style="margin-left:0;">Assign Payee / Account / Class where you can, then click <b>Include</b> to move a row into the QBO Import tab. Rows you leave as-is export to the <b>Excluded - Needs Review</b> tab of the workbook (e.g. credit card payments/transfers are expected here — that's not an error).</p>
+        <div class="tablewrap"><table class="data" id="npTable"></table></div>
+      </div>
+
+      <div class="checkpoint" id="confirmCheckpoint">
+        <div class="cp-ico">✅</div>
+        <div class="cp-body">
+          <b>Checkpoint 2 — Confirm before download</b>
+          <span>Reviewed the Needs Review tab and happy with the categorization above.</span>
+          <label class="confirm"><input type="checkbox" id="confirmCheck" /> I've reviewed the exceptions and this is ready to download</label>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:18px;">
+        <button class="btn btn-ok" id="downloadBtn" disabled>⬇️ Download QBO Import workbook (.xlsx)</button>
+        <span class="badge" id="dlBadge"></span>
+        <a class="btn btn-ghost" id="dashboardLink" href="dashboard.html" target="_blank" rel="noopener">📊 Open Dashboard</a>
+      </div>
+    </section>
+
+    <div class="footer">
+      GATP Solutions · HN Bank Expense Categorization · Runs offline in your browser ·
+      Output: <code>&lt;Bank/CC&gt;_QBO_Expense_Import_&lt;range&gt;.xlsx</code>
+    </div>
+  </main>
+
+  <!-- Vendored libraries, local-first with a version-pinned CDN fallback -->
+  <script src="assets/vendor-loader.js"></script>
+  <script>
+    GATPLoadScripts([
+      'vendor/xlsx.full.min.js',
+      'vendor/exceljs.min.js',
+      'assets/exp-data.js',
+      'assets/exp-core.js',
+      'assets/exp-xlsx-build.js',
+      'assets/exp-app.js',
+    ], function () {});
+  </script>
+</body>
+</html>
