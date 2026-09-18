@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HN Expense Dashboard | GATP</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231F3864'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'%3E%24%3C/text%3E%3C/svg%3E" />
+  <meta name="description" content="Spend-by-category, class and vendor dashboard for the last HN bank expense categorization run. Reads from this browser's local storage only." />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <div class="brand">
+        <div class="logo">GATP</div>
+        <div>
+          <h1>HN Expense Dashboard</h1>
+          <p id="subtitle">Spend by category, class and vendor for the last categorization run.</p>
+        </div>
+      </div>
+      <div class="privacy">🔒 Reads the last run from this browser's local storage. Nothing is uploaded to any server.</div>
+      <nav class="toolnav">
+        <a href="index.html">Bank Expense Categorization</a>
+        <a href="dashboard.html" class="active">Expense Dashboard</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="emptyState" class="card hidden">
+      <div class="dash-empty">
+        <div class="big">📊</div>
+        <p><b>No categorization run found yet.</b></p>
+        <p>Open the Bank Expense Categorization tool, process a bank/CC account, then come back here —
+          this page reads the most recent run straight from your browser.</p>
+        <p class="actions" style="justify-content:center;">
+          <a class="btn btn-primary" href="index.html">Go to Bank Expense Categorization</a>
+        </p>
+      </div>
+    </div>
+
+    <div id="dashContent" class="hidden">
+      <section class="card">
+        <h2>Run summary — <span id="acctLabel"></span></h2>
+        <p class="hint">Period: <span id="periodLabel"></span> · <span id="asOfLabel" class="dash-meta"></span></p>
+        <div class="tiles" id="kpiTiles"></div>
+        <div class="actions" style="margin-top:16px;">
+          <button class="btn btn-ghost" id="refreshBtn" type="button">🔄 Refresh</button>
+          <button class="btn btn-ghost" id="clearBtn" type="button">🗑 Clear stored data</button>
+        </div>
+      </section>
+
+      <div class="dash-grid">
+        <section class="card chart-card">
+          <h4>Spend by Category (HN Account)</h4>
+          <div class="barchart" id="chartCategory"></div>
+          <details class="viewtable"><summary>View as table</summary><div class="tablewrap" id="tableCategory"></div></details>
+        </section>
+
+        <section class="card chart-card">
+          <h4>Spend by Class / Clinic</h4>
+          <div class="barchart" id="chartClass"></div>
+          <details class="viewtable"><summary>View as table</summary><div class="tablewrap" id="tableClass"></div></details>
+        </section>
+
+        <section class="card chart-card">
+          <h4>Top Vendors by Spend</h4>
+          <div class="barchart" id="chartVendor"></div>
+          <details class="viewtable"><summary>View as table</summary><div class="tablewrap" id="tableVendor"></div></details>
+        </section>
+
+        <section class="card chart-card">
+          <h4>Needs Review — by Reason</h4>
+          <div class="barchart" id="chartReason"></div>
+          <details class="viewtable"><summary>View as table</summary><div class="tablewrap" id="tableReason"></div></details>
+        </section>
+      </div>
+    </div>
+
+    <div class="footer">
+      GATP Solutions · HN Expense Dashboard · Runs offline in your browser
+    </div>
+  </main>
+
+  <script src="assets/exp-core.js"></script>
+  <script src="assets/exp-dashboard.js"></script>
+</body>
+</html>
