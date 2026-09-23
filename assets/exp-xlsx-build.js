@@ -70,7 +70,19 @@
       i = i || {};
       const c = new e.Workbook();
       ((c.creator = "GATP HN Bank Expense Categorization"),
-        (c.created = new Date()));
+        (c.created = new Date()),
+        // The first sheet ("Lists") is hidden, so open on "Vendor Mappings".
+        (c.views = [
+          {
+            x: 0,
+            y: 0,
+            width: 20000,
+            height: 12000,
+            firstSheet: 1,
+            activeTab: 1,
+            visibility: "visible",
+          },
+        ]));
       const d = o.imported,
         m = o.excluded,
         u = d.length,
@@ -131,7 +143,10 @@
             if (!r || !r.payee) return;
             const msoPayee = String(r.registerPayee || "").trim(),
               msoMemo = msoPayee ? "" : String(r.memo || "").trim(),
-              k = normKey(msoPayee || msoMemo) + "|" + normKey(r.payee);
+              // blank MSO Payee: one row per vendor (memo shown as an example)
+              k = msoPayee
+                ? normKey(msoPayee) + "|" + normKey(r.payee)
+                : "memo|" + normKey(r.payee);
             if (!msoPayee && !msoMemo) return;
             if (seen.has(k)) return;
             seen.add(k);
@@ -213,28 +228,28 @@
             a = t + 1;
           for (let e = 2; e <= u + 1; e++) {
             const t = B.getRow(e).getCell(a);
-            ("amount" === o && (t.numFmt = "#,##0.00"),
+            ("amount" === o &&
+              ((t.numFmt = "#,##0.00"),
+              // store Amount as a real number so the TOTAL SUM works
+              null != t.value &&
+                "" !== t.value &&
+                !isNaN(Number(t.value)) &&
+                (t.value = Number(t.value))),
               ("description" !== o && "memo" !== o) ||
                 ((t.numFmt = "@"),
-                (t.value = String(null == t.value ? "" : t.value))),
-              "payee" === o &&
-                (t.dataValidation = {
-                  type: "list",
-                  allowBlank: !0,
-                  formulae: [y],
-                }),
-              "account" === o &&
-                (t.dataValidation = {
-                  type: "list",
-                  allowBlank: !0,
-                  formulae: [k],
-                }),
-              "class" === o &&
-                (t.dataValidation = {
-                  type: "list",
-                  allowBlank: !0,
-                  formulae: [F],
-                }));
+                (t.value = String(null == t.value ? "" : t.value))));
+          }
+          // One dropdown rule per column range (per-cell rules made ExcelJS
+          // write overlapping ranges, which Excel reports as a file problem).
+          const dvFormula =
+            "payee" === o ? y : "account" === o ? k : "class" === o ? F : null;
+          if (dvFormula && u >= 1) {
+            const col = B.getColumn(a).letter;
+            B.dataValidations.add(`${col}2:${col}${u + 1}`, {
+              type: "list",
+              allowBlank: !0,
+              formulae: [dvFormula],
+            });
           }
         }));
       const A =
