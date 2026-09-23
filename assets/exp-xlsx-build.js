@@ -70,19 +70,7 @@
       i = i || {};
       const c = new e.Workbook();
       ((c.creator = "GATP HN Bank Expense Categorization"),
-        (c.created = new Date()),
-        // The first sheet ("Lists") is hidden, so open on "Vendor Mappings".
-        (c.views = [
-          {
-            x: 0,
-            y: 0,
-            width: 20000,
-            height: 12000,
-            firstSheet: 1,
-            activeTab: 1,
-            visibility: "visible",
-          },
-        ]));
+        (c.created = new Date()));
       const d = o.imported,
         m = o.excluded,
         u = d.length,
