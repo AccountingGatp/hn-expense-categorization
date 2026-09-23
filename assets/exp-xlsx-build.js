@@ -48,11 +48,6 @@
       (e, t) => String(e).localeCompare(String(t)),
     );
   }
-
-  function cleanExcelText(e) {
-    if (null == e) return "";
-    return String(e).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
-  }
   const r = {
     date: "date",
     payee: "payee",
@@ -113,9 +108,43 @@
         w.forEach((e, t) => {
           C.getCell(t + 2, 3).value = e;
         }));
-      const vendorMappings = (i.vendorMappings || []).concat(
-          i.fixedVendorMappings || [],
-        ),
+      const vendorMappings = (function () {
+          // Saved (confirmed) + fixed mappings first.
+          const list = (i.vendorMappings || []).concat(
+              i.fixedVendorMappings || [],
+            ),
+            normKey = (x) =>
+              String(x || "")
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, " "),
+            seen = new Set(
+              list.map(
+                (e) =>
+                  normKey(e.msoPayee || e.msoMemo || e.memoContains) +
+                  "|" +
+                  normKey(e.hnVendor),
+              ),
+            );
+          // Then every MSO Payee -> HN Vendor mapping actually used in this run.
+          (d || []).forEach((r) => {
+            if (!r || !r.payee) return;
+            const msoPayee = String(r.registerPayee || "").trim(),
+              msoMemo = msoPayee ? "" : String(r.memo || "").trim(),
+              k = normKey(msoPayee || msoMemo) + "|" + normKey(r.payee);
+            if (!msoPayee && !msoMemo) return;
+            if (seen.has(k)) return;
+            seen.add(k);
+            list.push({
+              msoPayee: msoPayee,
+              msoMemo: msoMemo,
+              memoContains: "",
+              hnVendor: r.payee,
+              source: "auto (this run)",
+            });
+          });
+          return list;
+        })(),
         V = c.addWorksheet("Vendor Mappings", {
           views: [{ state: "frozen", ySplit: 1, showGridLines: !1 }],
         }),
@@ -168,14 +197,14 @@
                       : 14,
         };
       });
-      const v = d.map((e) => p.map((t) => (t ? cleanExcelText(e[t]) : "")));
+      const v = d.map((e) => p.map((t) => (t ? e[t] : "")));
       (B.addTable({
         name: "QBOImport",
         ref: "A1",
         headerRow: !0,
         totalsRow: !1,
         style: { theme: "TableStyleMedium2", showRowStripes: !0 },
-        columns: [...new Set(h.map((e) => cleanExcelText(e)))].map((e) => ({ name: e })),
+        columns: h.map((e) => ({ name: e })),
         rows: v.length ? v : [h.map(() => "")],
       }),
         v.length || B.spliceRows(2, 1),
@@ -241,7 +270,10 @@
         ]
           .filter(Boolean)
           .join("\n");
-        // Removed Excel note generation to prevent workbook XML corruption in Excel desktop versions.
+        B.getCell("A1").note = {
+          texts: [{ text: e }],
+          margins: { insetmode: "auto" },
+        };
       }
       const M = c.addWorksheet("Excluded - Needs Review", {
           views: [{ state: "frozen", ySplit: 1, showGridLines: !1 }],
