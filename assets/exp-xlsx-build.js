@@ -48,6 +48,11 @@
       (e, t) => String(e).localeCompare(String(t)),
     );
   }
+
+  function cleanExcelText(e) {
+    if (null == e) return "";
+    return String(e).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+  }
   const r = {
     date: "date",
     payee: "payee",
@@ -163,14 +168,14 @@
                       : 14,
         };
       });
-      const v = d.map((e) => p.map((t) => (t ? e[t] : "")));
+      const v = d.map((e) => p.map((t) => (t ? cleanExcelText(e[t]) : "")));
       (B.addTable({
         name: "QBOImport",
         ref: "A1",
         headerRow: !0,
         totalsRow: !1,
         style: { theme: "TableStyleMedium2", showRowStripes: !0 },
-        columns: h.map((e) => ({ name: e })),
+        columns: [...new Set(h.map((e) => cleanExcelText(e)))].map((e) => ({ name: e })),
         rows: v.length ? v : [h.map(() => "")],
       }),
         v.length || B.spliceRows(2, 1),
@@ -236,10 +241,7 @@
         ]
           .filter(Boolean)
           .join("\n");
-        B.getCell("A1").note = {
-          texts: [{ text: e }],
-          margins: { insetmode: "auto" },
-        };
+        // Removed Excel note generation to prevent workbook XML corruption in Excel desktop versions.
       }
       const M = c.addWorksheet("Excluded - Needs Review", {
           views: [{ state: "frozen", ySplit: 1, showGridLines: !1 }],
