@@ -274,8 +274,12 @@
       (a(B, 1, h.length), u >= 1 && n(B, 2, u + 1, h.length));
       const S = d.filter((e) => e.tieBreak).length,
         x = d.filter((e) => e.forcedCorporate).length;
+      // NOTE: this used to be a cell comment on QBO Import!A1, but ExcelJS
+      // writes comments + tables in an order Excel rejects ("We found a
+      // problem with some content"). The text now goes on the Read Me tab.
+      let reviewNote = [];
       if (S || x) {
-        const e = [
+        reviewNote = [
           S
             ? `${S} row(s) matched a bank transaction to one of several MSO register lines sharing the same date & amount (matched by closest vendor/description text — verify).`
             : null,
@@ -283,12 +287,7 @@
             ? `${x} row(s) are Intercompany Due (to)/from Related Party accounts (Battleborn, Sagebrush, etc.) — Class forced to "Corporate" regardless of the MSO register's own Class.`
             : null,
         ]
-          .filter(Boolean)
-          .join("\n");
-        B.getCell("A1").note = {
-          texts: [{ text: e }],
-          margins: { insetmode: "auto" },
-        };
+          .filter(Boolean);
       }
       const M = c.addWorksheet("Excluded - Needs Review", {
           views: [{ state: "frozen", ySplit: 1, showGridLines: !1 }],
@@ -364,7 +363,15 @@
           '    "Corporate" regardless of the MSO register\'s own Class.',
           "  - One bank account per file — QBO imports per bank account. Add a Bank column back in if you ever",
           "    need to combine multiple banks in one working file before splitting for import.",
-        ].forEach((e, t) => {
+        ]
+          .concat(
+            reviewNote.length
+              ? ["", "Check these rows on QBO Import:"].concat(
+                  reviewNote.map((e) => "  - " + e),
+                )
+              : [],
+          )
+          .forEach((e, t) => {
           ((O.getCell(t + 1, 1).value = e),
             (O.getCell(t + 1, 1).font = { name: "Arial", size: 10 }));
         }),
